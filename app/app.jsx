@@ -9,6 +9,7 @@ import NotificationsScreen from './notifications';
 import SettingsScreen from './settings';
 
 import InternshipScreen from './internship';
+import MapScreen from './map';
 import AboutScreen from './about';
 
 const Stack = createNativeStackNavigator();
@@ -22,6 +23,7 @@ export default function AppNavigator() {
       <Stack.Screen name="OnboardingScreen" component={OnboardingScreen} />
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
       <Stack.Screen name="NotificationsScreen" component={NotificationsScreen} />
+      <Stack.Screen name="MapScreen" component={MapScreen} />
       <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
       <Stack.Screen name="InternshipScreen" component={InternshipScreen} />
       <Stack.Screen name="AboutScreen" component={AboutScreen} />
