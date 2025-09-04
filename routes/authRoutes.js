@@ -5,5 +5,8 @@ const router = express.Router();
 
 router.post('/signup', signUpUser);
 router.post('/login', loginUser);
+router.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK' });
+});
 
 export default router;
