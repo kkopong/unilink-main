@@ -1,21 +1,17 @@
 {
   "name": "unilink-backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "@supabase/supabase-js": "^2.51.0",
-    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.0",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
-  },
-  "type": "module"
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  }
 }
