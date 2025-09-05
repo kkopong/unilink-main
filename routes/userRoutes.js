@@ -8,6 +8,7 @@ router.get('/profile', (req, res) => {
   res.json({ message: 'Profile route' });
 });
 
+
 // Protected routes
 router.get('/admin', adminAuth, (req, res) => {
   res.json({ message: 'Admin route' });

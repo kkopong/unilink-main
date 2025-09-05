@@ -5,7 +5,7 @@ import { createNews, getAllNews, deleteNews } from '../controllers/newController
 import { createInternship, getAllInternships, deleteInternship } from '../controllers/internshipController.js';
 
 const router = express.Router();
-
+console.log("admin routes loaded");
 // Apply adminAuth middleware to all routes
 router.use(adminAuth);
 
