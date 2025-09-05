@@ -1,115 +1,125 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons, Ionicons, FontAwesome } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import BottomNav from './components/BottomNav';
 
-const notifications = [
-  {
-    id: 1,
-    title: 'New Internship Posted!',
-    message: 'A new Software Engineering internship is now available at TechNova.',
-    time: '2 hours ago',
-  },
-  {
-    id: 2,
-    title: 'Profile Updated',
-    message: 'Your profile has been successfully updated.',
-    time: '1 day ago',
-  },
-  {
-    id: 3,
-    title: 'New Event: Career Fair',
-    message: 'Join us at the upcoming virtual career fair for networking opportunities.',
-    time: '3 days ago',
-  },
-];
+export default function NotificationsScreen() {
+  const router = useRouter();
 
-export default function NotificationsScreen({ navigation }) {
+  const notifications = [
+    {
+      id: 1,
+      title: 'New Internship Opportunity',
+      message: 'Software Developer position available at Tech Corp',
+      time: '2h ago',
+      unread: true,
+    },
+    {
+      id: 2,
+      title: 'Campus Event Update',
+      message: 'Career Fair postponed to next week',
+      time: '5h ago',
+      unread: false,
+    },
+    // Add more notifications as needed
+  ];
+
+  const NotificationItem = ({ title, message, time, unread }) => (
+    <TouchableOpacity style={styles.notificationItem}>
+      <View style={styles.notificationContent}>
+        <View style={styles.notificationHeader}>
+          <Text style={[styles.title, unread && styles.unreadText]}>{title}</Text>
+          {unread && <View style={styles.unreadDot} />}
+        </View>
+        <Text style={styles.message}>{message}</Text>
+        <Text style={styles.time}>{time}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Notifications</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Notifications</Text>
+        <TouchableOpacity>
+          <Ionicons name="settings-outline" size={24} color="#2166A5" />
+        </TouchableOpacity>
+      </View>
 
-        {notifications.map((note) => (
-          <View key={note.id} style={styles.card}>
-            <Text style={styles.cardTitle}>{note.title}</Text>
-            <Text style={styles.cardMessage}>{note.message}</Text>
-            <Text style={styles.cardTime}>{note.time}</Text>
-          </View>
+      <ScrollView style={styles.notificationsList}>
+        {notifications.map((notification) => (
+          <NotificationItem key={notification.id} {...notification} />
         ))}
       </ScrollView>
 
-      <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.navigate('HomeScreen')}>
-          <MaterialCommunityIcons name="home" size={28} color="#2166A5" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('MapScreen')}>
-          <Ionicons name="map" size={28} color="#2166A5" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('InternshipScreen')}>
-          <MaterialCommunityIcons name="briefcase" size={28} color="#2166A5" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('NotificationsScreen')}>
-          <Ionicons name="notifications" size={28} color="#2166A5" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen')}>
-          <FontAwesome name="user-circle" size={32} color="#2166A5" />
-        </TouchableOpacity>
-      </View>
+      <BottomNav />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  container: {
     flex: 1,
-    backgroundColor: '#E3EFFB',
+    backgroundColor: '#fff',
   },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 100,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2166A5',
+  },
+  notificationsList: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  notificationItem: {
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
   },
   title: {
-    marginTop: 50,
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-  },
-  cardTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  unreadText: {
+    fontWeight: 'bold',
     color: '#2166A5',
-    marginBottom: 4,
   },
-  cardMessage: {
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2166A5',
+    marginLeft: 8,
+  },
+  message: {
     fontSize: 14,
-    color: '#444',
-    marginBottom: 6,
+    color: '#666',
+    marginBottom: 5,
   },
-  cardTime: {
+  time: {
     fontSize: 12,
-    color: '#888',
-    textAlign: 'right',
-  },
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: '#E3EFFB',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderColor: '#dbeafe',
+    color: '#999',
   },
 });

@@ -1,15 +1,17 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-// Navigation prop is provided by React Navigation
+import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
-export default function OnboardingScreen({ navigation }) {
+export default function OnboardingScreen() {
+  const router = useRouter();
+
   return (
     <View style={styles.container}>
       {/* Top illustration or logo */}
       <Image
-        source={require('../assets/unilink-logo.png')} // Replace with your onboarding illustration if needed
+        source={require('../assets/unilink-logo.png')}
         style={styles.illustration}
         resizeMode="contain"
       />
@@ -23,7 +25,7 @@ export default function OnboardingScreen({ navigation }) {
       {/* Get Started button */}
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.replace('HomeScreen')}
+        onPress={() => router.replace('/')}
       >
         <Text style={styles.buttonText}>Get Started</Text>
       </TouchableOpacity>
