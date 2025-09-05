@@ -14,6 +14,7 @@ import {
 import { Ionicons, MaterialCommunityIcons, FontAwesome } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE, Polyline, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
@@ -107,7 +108,8 @@ const campusLocations = [
 
 const categories = ["All", "Academic", "Dining", "Landmark", "Entrance", "Healthcare"];
 
-const EnhancedMapScreen = ({ navigation }) => {
+const EnhancedMapScreen = () => {
+  const router = useRouter();
   const mapRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -810,19 +812,19 @@ const EnhancedMapScreen = ({ navigation }) => {
 
       {/* Bottom Navigation */}
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.navigate('HomeScreen')}>
+        <TouchableOpacity onPress={() => router.replace('/')}>
           <MaterialCommunityIcons name="home" size={28} color="#2166A5" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('MapScreen')}>
+        <TouchableOpacity onPress={() => router.replace('/map')}>
           <Ionicons name="map" size={28} color="#2166A5" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('InternshipScreen')}>
+        <TouchableOpacity onPress={() => router.replace('/internship')}>
           <MaterialCommunityIcons name="briefcase" size={28} color="#2166A5" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('NotificationsScreen')}>
+        <TouchableOpacity onPress={() => router.replace('/notifications')}>
           <Ionicons name="notifications" size={28} color="#2166A5" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen')}>
+        <TouchableOpacity onPress={() => router.replace('/settings')}>
           <FontAwesome name="user-circle" size={32} color="#2166A5" />
         </TouchableOpacity>
       </View>

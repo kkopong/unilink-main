@@ -1,50 +1,102 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Dimensions, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Image, 
+  Dimensions, 
+  ActivityIndicator, 
+  ScrollView, 
+  KeyboardAvoidingView, 
+  Platform 
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
-export default function RegisterScreen({ navigation }) {
+export default function RegisterScreen() {
+  const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(''); // <-- Add this
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  const handleSignUp = async () => {
-    setErrorMsg(''); // Clear previous error
-    if (!name || !email || !password || !confirmPassword) {
-      setErrorMsg('Please fill in all fields.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setErrorMsg('Passwords do not match.');
-      return;
-    }
-
+  const handleRegister = async () => {
+    setErrorMsg('');
+    setSuccessMsg('');
     setLoading(true);
-    try {
-      const response = await fetch('https://unilink-tuqi.onrender.com/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-      const data = await response.json();
-      setLoading(false);
 
-      if (response.ok) {
-        setErrorMsg('');
-        // Store token in browser (if returned from backend)
-        if (data.token) {
-          localStorage.setItem('unilink_token', data.token);
-        }
-        navigation.navigate('OnboardingScreen');
-      } else {
-        setErrorMsg(data.error || 'Something went wrong.');
-      }
-    } catch (error) {
+    // Validate inputs
+    if (!name || !email || !password || !confirmPassword) {
+      setErrorMsg('Please fill in all fields');
       setLoading(false);
-      setErrorMsg('Network Error: Could not connect to server.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMsg('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters long');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('https://unilink-backend-9t4p.onrender.com/api/auth/register', {
+        method: 'POST',
+        headers: { 
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          name: name.trim(),
+          email: email.trim().toLowerCase(), 
+          password 
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Registration response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      if (data.success) {
+        // Store auth data
+        await AsyncStorage.multiSet([
+          ['unilink_user', JSON.stringify(data.user)],
+          ['unilink_token', data.token],
+          ['is_admin', String(!!data.user?.is_admin)]
+        ]);
+
+        setSuccessMsg('Account created successfully! Redirecting...');
+        
+        // Navigate to onboarding after a short delay
+        setTimeout(() => {
+          router.replace('/onboarding_screen');
+        }, 2000);
+      }
+      
+    } catch (error) {
+      console.error('Registration error:', error);
+      if (error.message === 'Network request failed') {
+        setErrorMsg('Unable to connect to server. Please check your internet connection.');
+      } else {
+        setErrorMsg(error.message || 'An error occurred during registration');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,56 +118,62 @@ export default function RegisterScreen({ navigation }) {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.title}>Sign Up</Text>
-          
+
+          <Text style={styles.title}>Create Account</Text>
+
           {errorMsg ? <Text style={styles.errorMsg}>{errorMsg}</Text> : null}
+          {successMsg ? <Text style={styles.successMsg}>{successMsg}</Text> : null}
 
           <TextInput
             style={styles.input}
             placeholder="Full Name"
+            placeholderTextColor="#082c4d"
             value={name}
             onChangeText={setName}
-            placeholderTextColor="#082c4d"
+            autoCapitalize="words"
           />
+
           <TextInput
             style={styles.input}
             placeholder="Email"
+            placeholderTextColor="#082c4d"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
-            placeholderTextColor="#082c4d"
           />
+
           <TextInput
             style={styles.input}
             placeholder="Password"
+            placeholderTextColor="#082c4d"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            placeholderTextColor="#082c4d"
           />
+
           <TextInput
             style={styles.input}
             placeholder="Confirm Password"
+            placeholderTextColor="#082c4d"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
-            placeholderTextColor="#082c4d"
           />
 
           <TouchableOpacity
             style={styles.button}
-            onPress={handleSignUp}
+            onPress={handleRegister}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Sign Up</Text>
+              <Text style={styles.buttonText}>Create Account</Text>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')}>
+          <TouchableOpacity onPress={() => router.push('/login')}>
             <Text style={styles.link}>Already have an account? Login</Text>
           </TouchableOpacity>
         </View>
@@ -141,32 +199,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#082c4d',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
   },
   logo: {
-    width: width * 1,
-    height: width * 0.5,
-    marginBottom: 24,
+    width: width * 0.6,
+    height: width * 0.6,
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#a4c9eb',
-    marginBottom: 24,
-  },
-  errorMsg: {
-    color: '#d32f2f',
-    fontSize: 15,
-    marginBottom: 12,
-    textAlign: 'center',
-    fontWeight: 'bold',
-    backgroundColor: '#fff',
-    padding: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#d32f2f',
-    width: '100%',
+    marginBottom: 20,
   },
   input: {
     width: '100%',
@@ -175,9 +220,9 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 16,
     fontSize: 16,
-    color: '#a4c9eb',
+    color: '#082c4d',
     borderWidth: 1,
-    borderColor: '#a4c9eb',
+    borderColor: '#082c4d',
   },
   button: {
     backgroundColor: '#a4c9eb',
@@ -192,11 +237,38 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     letterSpacing: 1,
+    textAlign: 'center',
   },
   link: {
     color: '#a4c9eb',
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
+  },
+  errorMsg: {
+    color: '#d32f2f',
+    fontSize: 15,
+    marginBottom: 12,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d32f2f',
+    width: '100%',
+  },
+  successMsg: {
+    color: '#2e7d32',
+    fontSize: 15,
+    marginBottom: 12,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2e7d32',
+    width: '100%',
   },
 });
