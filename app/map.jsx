@@ -10,6 +10,7 @@ import {
   Modal,
   Alert,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE, Polyline, Circle } from 'react-native-maps';
@@ -31,6 +32,7 @@ const campusLocations = [
     walkingTime: "5 min",
     icon: "library-outline",
     rating: 4.5,
+    keywords: ["library", "books", "study", "research", "reading", "computer", "wifi", "quiet"],
   },
   {
     id: "2",
@@ -43,6 +45,7 @@ const campusLocations = [
     walkingTime: "3 min",
     icon: "people-outline",
     rating: 4.8,
+    keywords: ["hall", "ceremony", "graduation", "events", "auditorium", "assembly", "meetings"],
   },
   {
     id: "3",
@@ -55,6 +58,7 @@ const campusLocations = [
     walkingTime: "7 min",
     icon: "cafe-outline",
     rating: 4.2,
+    keywords: ["food", "eating", "restaurant", "mall", "shopping", "atm", "dining", "cafe"],
   },
   {
     id: "4",
@@ -67,6 +71,7 @@ const campusLocations = [
     walkingTime: "8 min",
     icon: "construct-outline",
     rating: 4.3,
+    keywords: ["engineering", "lab", "laboratory", "lecture", "class", "technology", "mechanical", "civil"],
   },
   {
     id: "5",
@@ -79,6 +84,7 @@ const campusLocations = [
     walkingTime: "10 min",
     icon: "car-outline",
     rating: 4.0,
+    keywords: ["entrance", "gate", "security", "parking", "main", "entry", "checkpoint"],
   },
   {
     id: "6",
@@ -91,6 +97,7 @@ const campusLocations = [
     walkingTime: "4 min",
     icon: "school-outline",
     rating: 4.4,
+    keywords: ["student", "activities", "services", "meeting", "center", "hub", "cafeteria"],
   },
   {
     id: "7",
@@ -103,6 +110,7 @@ const campusLocations = [
     walkingTime: "6 min",
     icon: "medical-outline",
     rating: 4.1,
+    keywords: ["medical", "health", "doctor", "pharmacy", "emergency", "hospital", "clinic", "care"],
   },
 ];
 
@@ -128,6 +136,9 @@ const EnhancedMapScreen = () => {
   const [locationPermission, setLocationPermission] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [filteredLocations, setFilteredLocations] = useState(campusLocations);
   const [region, setRegion] = useState({
     latitude: 5.637,
     longitude: -0.188,
@@ -135,21 +146,81 @@ const EnhancedMapScreen = () => {
     longitudeDelta: 0.01,
   });
 
-  // Search functionality
-  useEffect(() => {
-    if (searchQuery.trim().length > 0) {
-      const results = campusLocations.filter(location =>
-        location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        location.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        location.category.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setSearchResults(results);
-      setShowSearchResults(true);
-    } else {
+  // Enhanced search functionality with fuzzy matching and keywords
+  const performSearch = (query) => {
+    if (!query || query.trim().length === 0) {
       setSearchResults([]);
-      setShowSearchResults(false);
+      setFilteredLocations(campusLocations);
+      return;
     }
+
+    const searchTerm = query.toLowerCase().trim();
+    
+    const results = campusLocations.filter(location => {
+      // Exact matches (highest priority)
+      if (location.title.toLowerCase().includes(searchTerm) ||
+          location.description.toLowerCase().includes(searchTerm) ||
+          location.category.toLowerCase().includes(searchTerm)) {
+        return true;
+      }
+
+      // Keyword matching
+      if (location.keywords && location.keywords.some(keyword => 
+          keyword.toLowerCase().includes(searchTerm) ||
+          searchTerm.includes(keyword.toLowerCase()))) {
+        return true;
+      }
+
+      // Facility matching
+      if (location.facilities && location.facilities.some(facility =>
+          facility.toLowerCase().includes(searchTerm))) {
+        return true;
+      }
+
+      // Partial word matching
+      const words = searchTerm.split(' ');
+      return words.some(word => 
+        location.title.toLowerCase().includes(word) ||
+        location.description.toLowerCase().includes(word) ||
+        (location.keywords && location.keywords.some(keyword => 
+          keyword.toLowerCase().includes(word)))
+      );
+    });
+
+    // Sort results by relevance
+    const sortedResults = results.sort((a, b) => {
+      const aTitle = a.title.toLowerCase();
+      const bTitle = b.title.toLowerCase();
+      
+      // Exact title matches first
+      if (aTitle.includes(searchTerm) && !bTitle.includes(searchTerm)) return -1;
+      if (!aTitle.includes(searchTerm) && bTitle.includes(searchTerm)) return 1;
+      
+      // Then by rating
+      return b.rating - a.rating;
+    });
+
+    setSearchResults(sortedResults);
+    setFilteredLocations(sortedResults);
+  };
+
+  // Real-time search as user types
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      performSearch(searchQuery);
+      setShowSearchResults(searchQuery.trim().length > 0);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(debounceTimer);
   }, [searchQuery]);
+
+  // Add to search history when user selects a result
+  const addToSearchHistory = (searchTerm) => {
+    if (!searchTerm.trim()) return;
+    
+    const newHistory = [searchTerm, ...searchHistory.filter(item => item !== searchTerm)].slice(0, 5);
+    setSearchHistory(newHistory);
+  };
 
   // Get user's current location
   useEffect(() => {
@@ -181,7 +252,6 @@ const EnhancedMapScreen = () => {
         });
       } catch (error) {
         console.error('Error getting location:', error);
-        // Fallback to KNUST coordinates
         const fallbackLocation = { latitude: 5.637, longitude: -0.188 };
         setUserLocation(fallbackLocation);
         setRegion({
@@ -196,7 +266,6 @@ const EnhancedMapScreen = () => {
   // Calculate nearby locations based on user position
   useEffect(() => {
     if (!userLocation) {
-      // If no user location, still populate with default data
       setNearbyLocations(campusLocations);
       setAllLocations(campusLocations);
       return;
@@ -207,7 +276,7 @@ const EnhancedMapScreen = () => {
         ...location,
         distance: calculateDistance(userLocation, location.coordinate),
       }))
-      .filter((location) => location.distance <= 5) // Within 5km
+      .filter((location) => location.distance <= 5)
       .sort((a, b) => a.distance - b.distance);
 
     const all = campusLocations
@@ -221,9 +290,9 @@ const EnhancedMapScreen = () => {
     setAllLocations(all);
   }, [userLocation]);
 
-  // Simple distance calculation (Haversine formula simplified)
+  // Simple distance calculation
   const calculateDistance = (pos1, pos2) => {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = ((pos2.latitude - pos1.latitude) * Math.PI) / 180;
     const dLng = ((pos2.longitude - pos1.longitude) * Math.PI) / 180;
     const a =
@@ -240,8 +309,8 @@ const EnhancedMapScreen = () => {
     setDestination(location);
     setSelectedLocation(location);
     setShowSearchResults(false);
+    addToSearchHistory(location.title);
     
-    // Animate to the destination on the map
     if (mapRef.current) {
       mapRef.current.animateToRegion({
         latitude: location.coordinate.latitude,
@@ -258,7 +327,6 @@ const EnhancedMapScreen = () => {
     setSelectedLocation(location);
     setShowSearchResults(false);
     
-    // Animate to the selected location
     if (mapRef.current) {
       mapRef.current.animateToRegion({
         latitude: location.coordinate.latitude,
@@ -272,7 +340,29 @@ const EnhancedMapScreen = () => {
   const handleSearchResultPress = (location) => {
     setSearchQuery(location.title);
     setShowSearchResults(false);
+    setIsSearchFocused(false);
+    addToSearchHistory(location.title);
     handleMarkerPress(location);
+    Keyboard.dismiss();
+  };
+
+  const handleSearchHistoryPress = (searchTerm) => {
+    setSearchQuery(searchTerm);
+    setIsSearchFocused(false);
+    performSearch(searchTerm);
+    Keyboard.dismiss();
+  };
+
+  const clearSearchHistory = () => {
+    setSearchHistory([]);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setShowSearchResults(false);
+    setFilteredLocations(campusLocations);
+    setIsSearchFocused(false);
+    Keyboard.dismiss();
   };
 
   const centerMapOnUser = () => {
@@ -322,8 +412,7 @@ const EnhancedMapScreen = () => {
   const renderNearbyTab = () => {
     const locationsToShow = nearbyLocations.filter(location => {
       if (searchQuery.trim() === '') return true;
-      return location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-             location.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return filteredLocations.some(filtered => filtered.id === location.id);
     });
 
     return (
@@ -333,7 +422,9 @@ const EnhancedMapScreen = () => {
         contentContainerStyle={styles.scrollContentContainer}
       >
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Nearby Areas (Within 5km)</Text>
+          <Text style={styles.sectionTitle}>
+            {searchQuery ? `Search Results (${locationsToShow.length})` : 'Nearby Areas (Within 5km)'}
+          </Text>
           <TouchableOpacity onPress={getCurrentLocation} style={styles.refreshButton}>
             <Ionicons name="refresh-outline" size={20} color="#3B82F6" />
           </TouchableOpacity>
@@ -343,17 +434,20 @@ const EnhancedMapScreen = () => {
           <View style={styles.emptyState}>
             <Ionicons name="location-outline" size={48} color="#9CA3AF" />
             <Text style={styles.emptyStateText}>
-              {searchQuery ? 'No matching locations found' : 'No locations found within 5km'}
+              {searchQuery ? 'No matching locations found nearby' : 'No locations found within 5km'}
             </Text>
             <Text style={styles.emptyStateSubtext}>
-              {searchQuery ? 'Try a different search term' : 'Try refreshing your location'}
+              {searchQuery ? 'Try a different search term or check "All Locations"' : 'Try refreshing your location'}
             </Text>
           </View>
         ) : (
           locationsToShow.map((location) => (
             <TouchableOpacity
               key={location.id}
-              style={styles.nearbyCard}
+              style={[
+                styles.nearbyCard,
+                selectedLocation?.id === location.id && styles.selectedNearbyCard
+              ]}
               onPress={() => handleMarkerPress(location)}
             >
               <Ionicons name={location.icon} size={20} color="#3B82F6" />
@@ -379,13 +473,16 @@ const EnhancedMapScreen = () => {
   const renderAllLocationsTab = () => {
     let locationsToShow = allLocations.length > 0 ? allLocations : campusLocations;
     
-    // Apply filters
+    // Apply search filter
+    if (searchQuery.trim()) {
+      locationsToShow = locationsToShow.filter(location => 
+        filteredLocations.some(filtered => filtered.id === location.id)
+      );
+    }
+    
+    // Apply category filter
     locationsToShow = locationsToShow.filter(location => {
-      const matchesCategory = selectedCategory === "All" || location.category === selectedCategory;
-      const matchesSearch = searchQuery.trim() === '' || 
-        location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        location.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
+      return selectedCategory === "All" || location.category === selectedCategory;
     });
 
     return (
@@ -429,7 +526,9 @@ const EnhancedMapScreen = () => {
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>All Campus Locations</Text>
+          <Text style={styles.sectionTitle}>
+            {searchQuery ? `Search Results (${locationsToShow.length})` : 'All Campus Locations'}
+          </Text>
           <Text style={styles.locationCount}>
             {locationsToShow.length} location{locationsToShow.length !== 1 ? 's' : ''}
           </Text>
@@ -440,7 +539,7 @@ const EnhancedMapScreen = () => {
             <Ionicons name="school-outline" size={48} color="#9CA3AF" />
             <Text style={styles.emptyStateText}>No locations found</Text>
             <Text style={styles.emptyStateSubtext}>
-              {searchQuery ? 'Try a different search term' : 'Try changing the category filter'}
+              {searchQuery ? 'Try a different search term or clear filters' : 'Try changing the category filter'}
             </Text>
           </View>
         ) : (
@@ -500,46 +599,98 @@ const EnhancedMapScreen = () => {
     <View style={styles.container}>
       {/* Map Area */}
       <View style={styles.mapContainer}>
-        {/* Search Bar at Top */}
+        {/* Enhanced Search Bar at Top */}
         <View style={styles.topSearchContainer}>
           <View style={styles.searchInputContainer}>
             <Ionicons name="search-outline" size={20} color="#9CA3AF" style={styles.searchIcon} />
             <TextInput
               style={styles.topSearchInput}
-              placeholder="Search locations on map..."
+              placeholder="Search locations, facilities, or keywords..."
               value={searchQuery}
               onChangeText={setSearchQuery}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
               placeholderTextColor="#9CA3AF"
+              returnKeyType="search"
+              onSubmitEditing={() => {
+                if (searchResults.length > 0) {
+                  handleSearchResultPress(searchResults[0]);
+                }
+              }}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => {
-                setSearchQuery("");
-                setShowSearchResults(false);
-              }} style={styles.clearButton}>
+              <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
                 <Ionicons name="close-circle" size={20} color="#9CA3AF" />
               </TouchableOpacity>
             )}
           </View>
           
-          {/* Search Results Dropdown */}
-          {showSearchResults && searchResults.length > 0 && (
+          {/* Enhanced Search Results Dropdown */}
+          {(showSearchResults || isSearchFocused) && (
             <View style={styles.searchResultsContainer}>
-              {searchResults.map((location) => (
-                <TouchableOpacity
-                  key={location.id}
-                  style={styles.searchResultItem}
-                  onPress={() => handleSearchResultPress(location)}
-                >
-                  <Ionicons name={location.icon} size={16} color="#3B82F6" />
-                  <View style={styles.searchResultInfo}>
-                    <Text style={styles.searchResultTitle}>{location.title}</Text>
-                    <Text style={styles.searchResultDescription}>{location.description}</Text>
+              {/* Search History */}
+              {searchQuery.length === 0 && searchHistory.length > 0 && (
+                <View style={styles.searchHistorySection}>
+                  <View style={styles.searchHistoryHeader}>
+                    <Text style={styles.searchHistoryTitle}>Recent Searches</Text>
+                    <TouchableOpacity onPress={clearSearchHistory}>
+                      <Text style={styles.clearHistoryText}>Clear</Text>
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.searchResultCategory}>
-                    <Text style={styles.searchResultCategoryText}>{location.category}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                  {searchHistory.map((item, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.searchHistoryItem}
+                      onPress={() => handleSearchHistoryPress(item)}
+                    >
+                      <Ionicons name="time-outline" size={14} color="#9CA3AF" />
+                      <Text style={styles.searchHistoryItemText}>{item}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              
+              {/* Search Results */}
+              {searchResults.length > 0 ? (
+                <View style={styles.searchResultsSection}>
+                  {searchQuery.length > 0 && (
+                    <Text style={styles.searchResultsTitle}>
+                      {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
+                    </Text>
+                  )}
+                  {searchResults.slice(0, 5).map((location) => (
+                    <TouchableOpacity
+                      key={location.id}
+                      style={styles.searchResultItem}
+                      onPress={() => handleSearchResultPress(location)}
+                    >
+                      <Ionicons name={location.icon} size={16} color="#3B82F6" />
+                      <View style={styles.searchResultInfo}>
+                        <Text style={styles.searchResultTitle}>{location.title}</Text>
+                        <Text style={styles.searchResultDescription}>{location.description}</Text>
+                      </View>
+                      <View style={styles.searchResultCategory}>
+                        <Text style={styles.searchResultCategoryText}>{location.category}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  {searchResults.length > 5 && (
+                    <View style={styles.moreResultsIndicator}>
+                      <Text style={styles.moreResultsText}>
+                        +{searchResults.length - 5} more results in list below
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ) : searchQuery.length > 0 ? (
+                <View style={styles.noResultsContainer}>
+                  <Ionicons name="search-outline" size={24} color="#9CA3AF" />
+                  <Text style={styles.noResultsText}>No locations found</Text>
+                  <Text style={styles.noResultsSubtext}>
+                    Try different keywords like "food", "library", or "medical"
+                  </Text>
+                </View>
+              ) : null}
             </View>
           )}
         </View>
@@ -561,6 +712,7 @@ const EnhancedMapScreen = () => {
           showsCompass={true}
           showsScale={true}
           mapType="standard"
+          onPress={() => setIsSearchFocused(false)}
         >
           {/* User Location Marker */}
           {userLocation && (
@@ -579,42 +731,44 @@ const EnhancedMapScreen = () => {
           {userLocation && (
             <Circle
               center={userLocation}
-              radius={5000} // 5km in meters
+              radius={5000}
               strokeColor="rgba(59, 130, 246, 0.5)"
               fillColor="rgba(59, 130, 246, 0.1)"
               strokeWidth={2}
             />
           )}
 
-          {/* Campus Location Markers */}
+          {/* Campus Location Markers - Enhanced filtering */}
           {(() => {
             let locationsToShow = activeTab === "nearby" ? nearbyLocations : allLocations;
             if (locationsToShow.length === 0) {
               locationsToShow = campusLocations;
             }
             
-            return locationsToShow
-              .filter(location => {
-                if (searchQuery.trim() === '') return true;
-                return location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       location.description.toLowerCase().includes(searchQuery.toLowerCase());
-              })
-              .filter(location => {
-                if (activeTab === "all") {
-                  return selectedCategory === "All" || location.category === selectedCategory;
-                }
-                return true;
-              })
-              .map((location) => (
-                <Marker
-                  key={location.id}
-                  coordinate={location.coordinate}
-                  title={location.title}
-                  description={location.description}
-                  onPress={() => handleMarkerPress(location)}
-                  pinColor={selectedLocation?.id === location.id ? "red" : "green"}
-                />
-              ));
+            // Apply search filter
+            if (searchQuery.trim()) {
+              locationsToShow = locationsToShow.filter(location => 
+                filteredLocations.some(filtered => filtered.id === location.id)
+              );
+            }
+            
+            // Apply category filter for "all" tab
+            if (activeTab === "all") {
+              locationsToShow = locationsToShow.filter(location => {
+                return selectedCategory === "All" || location.category === selectedCategory;
+              });
+            }
+            
+            return locationsToShow.map((location) => (
+              <Marker
+                key={location.id}
+                coordinate={location.coordinate}
+                title={location.title}
+                description={location.description}
+                onPress={() => handleMarkerPress(location)}
+                pinColor={selectedLocation?.id === location.id ? "red" : "green"}
+              />
+            ));
           })()}
 
           {/* Route line from user to destination */}
@@ -876,12 +1030,55 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 12,
     marginTop: 8,
-    maxHeight: 200,
+    maxHeight: 300,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
+  },
+  searchHistorySection: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  searchHistoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  searchHistoryTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  clearHistoryText: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontWeight: '500',
+  },
+  searchHistoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  searchHistoryItemText: {
+    fontSize: 14,
+    color: '#1F2937',
+    marginLeft: 8,
+  },
+  searchResultsSection: {
+    paddingVertical: 8,
+  },
+  searchResultsTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   searchResultItem: {
     flexDirection: 'row',
@@ -914,6 +1111,33 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  moreResultsIndicator: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  moreResultsText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+  },
+  noResultsText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginTop: 8,
+  },
+  noResultsSubtext: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 4,
+    textAlign: 'center',
   },
   map: {
     flex: 1,
@@ -975,7 +1199,7 @@ const styles = StyleSheet.create({
   },
   bottomContainer: {
     backgroundColor: 'white',
-    height: height * 0.45, // Reduced height to prevent overlap
+    height: height * 0.45,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     shadowColor: '#000',
@@ -1081,7 +1305,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   scrollContentContainer: {
-    paddingBottom: 100, // Extra padding to account for fixed bottom nav
+    paddingBottom: 100,
   },
   categoryContainer: {
     marginBottom: 16,
@@ -1204,6 +1428,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  selectedNearbyCard: {
+    borderWidth: 2,
+    borderColor: '#3B82F6',
   },
   nearbyInfo: {
     flex: 1,
