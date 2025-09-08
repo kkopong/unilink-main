@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
+import BottomNav from './components/BottomNav';
 
 const { width } = Dimensions.get('window');
 
-export default function ProfileScreen({ navigation }) {
+export default function ProfileScreen({  }) {
   return (
     <View style={styles.container}>
       {/* Avatar */}
@@ -22,21 +23,21 @@ export default function ProfileScreen({ navigation }) {
       </TouchableOpacity>
     
       {/* Profile Options */}
-      <View style={styles.options}>
-        <TouchableOpacity style={styles.option} onPress={() => navigation && navigation.navigate('SettingsScreen')}>
-          <Text style={styles.optionText}>Settings</Text>
+      <View style={styles.navBar}>
+        <TouchableOpacity onPress={() => router.replace('/')}>
+          <MaterialCommunityIcons name="home" size={28} color="#2166A5" />
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.option}
-          onPress={() => navigation && navigation.navigate('NotificationsScreen')}
-        >
-          <Text style={styles.optionText}>My Events</Text>
+        <TouchableOpacity onPress={() => router.replace('/map')}>
+          <Ionicons name="map" size={28} color="#2166A5" />
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.option}
-          onPress={() => navigation && navigation.navigate('LoginScreen')}
-        >
-          <Text style={[styles.optionText, { color: '#E53935' }]}>Logout</Text>
+        <TouchableOpacity onPress={() => router.replace('/internship')}>
+          <MaterialCommunityIcons name="briefcase" size={28} color="#2166A5" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.replace('/notifications')}>
+          <Ionicons name="notifications" size={28} color="#2166A5" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.replace('/settings')}>
+          <FontAwesome name="user-circle" size={32} color="#2166A5" />
         </TouchableOpacity>
       </View>
     </View>

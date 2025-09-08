@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 
 export default function BottomNav({ navigation }) {
   return (
-    <View style={styles.navBar}>
+   <View style={styles.navBar}>
            <TouchableOpacity onPress={() => router.replace('/')}>
              <MaterialCommunityIcons name="home" size={28} color="#2166A5" />
            </TouchableOpacity>
