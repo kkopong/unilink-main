@@ -147,7 +147,7 @@ Content-Type: application/json
 👥 Contributors
 Backend: Amofa Bright
 
-Frontend: Allan Osei
+Frontend: Kwabena Darko Opong
 
 📜 License
 This project is licensed under the MIT License.
